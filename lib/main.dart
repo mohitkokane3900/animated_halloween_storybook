@@ -25,18 +25,29 @@ class SpookyHome extends StatefulWidget {
   State<SpookyHome> createState() => _SpookyHomeState();
 }
 
-class _SpookyHomeState extends State<SpookyHome> {
+class _SpookyHomeState extends State<SpookyHome>
+    with SingleTickerProviderStateMixin {
   final rnd = Random();
   final AudioPlayer bgm = AudioPlayer();
   final AudioPlayer sfx = AudioPlayer();
   String message = 'Find the magic pumpkin';
   bool won = false;
+  late AnimationController winCtl;
+  late Animation<double> scale;
 
   @override
   void initState() {
     super.initState();
     bgm.setReleaseMode(ReleaseMode.loop);
     bgm.play(AssetSource('../bg_music.mp3'));
+    winCtl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    scale = Tween<double>(
+      begin: 1,
+      end: 1.6,
+    ).chain(CurveTween(curve: Curves.easeOutBack)).animate(winCtl);
   }
 
   @override
@@ -44,6 +55,7 @@ class _SpookyHomeState extends State<SpookyHome> {
     bgm.stop();
     bgm.dispose();
     sfx.dispose();
+    winCtl.dispose();
     super.dispose();
   }
 
@@ -62,6 +74,7 @@ class _SpookyHomeState extends State<SpookyHome> {
       message = 'You found it!';
     });
     sfx.play(AssetSource('../success.mp3'));
+    winCtl.forward(from: 0);
   }
 
   @override
@@ -130,8 +143,20 @@ class _SpookyHomeState extends State<SpookyHome> {
             Container(
               width: size.width,
               height: size.height,
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withOpacity(0.25),
             ),
+          if (won)
+            Center(
+              child: ScaleTransition(
+                scale: scale,
+                child: const Icon(
+                  Icons.emoji_nature,
+                  size: 160,
+                  color: Colors.orange,
+                ),
+              ),
+            ),
+          if (won) const ConfettiOverlay(),
         ],
       ),
     );
@@ -215,7 +240,7 @@ class _StarfieldState extends State<Starfield> {
   void initState() {
     super.initState();
     stars = List.generate(
-      120,
+      140,
       (_) => Offset(rnd.nextDouble(), rnd.nextDouble()),
     );
   }
@@ -247,4 +272,73 @@ class _StarsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _StarsPainter oldDelegate) => false;
+}
+
+class ConfettiOverlay extends StatefulWidget {
+  const ConfettiOverlay({super.key});
+  @override
+  State<ConfettiOverlay> createState() => _ConfettiOverlayState();
+}
+
+class _ConfettiOverlayState extends State<ConfettiOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController ctl;
+  late List<_Confetti> confetti;
+  final rnd = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    ctl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+    confetti = List.generate(
+      24,
+      (_) => _Confetti(
+        rnd.nextDouble(),
+        rnd.nextDouble(),
+        rnd.nextDouble() * 0.02 + 0.008,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    final h = MediaQuery.sizeOf(context).height;
+    return AnimatedBuilder(
+      animation: ctl,
+      builder: (_, __) {
+        return IgnorePointer(
+          child: Stack(
+            children: confetti.map((c) {
+              final dy = (c.y + ctl.value * c.speed) % 1.0;
+              final pos = Offset(c.x * w, dy * h);
+              final emoji = ['🎃', '👻', '🦇', '🕷️'][c.index % 4];
+              return Positioned(
+                left: pos.dx,
+                top: pos.dy,
+                child: Text(emoji, style: const TextStyle(fontSize: 22)),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Confetti {
+  final double x;
+  final double y;
+  final double speed;
+  final int index;
+  _Confetti(this.x, this.y, this.speed) : index = (x * 10000).floor();
 }
