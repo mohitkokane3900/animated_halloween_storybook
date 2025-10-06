@@ -67,6 +67,9 @@ flutter:
     - assets/bg_music.mp3
     - assets/boo.mp3
     - assets/success.mp3
+    - assets/bg_music.wav
+    - assets/boo.wav
+    - assets/success.wav
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
